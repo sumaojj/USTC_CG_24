@@ -1,4 +1,4 @@
-project(2_ImageWarping)
+project(3_PoissonImageEditing)
 file(GLOB source
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
   "${CMAKE_CURRENT_SOURCE_DIR}/*.h" 
@@ -11,4 +11,4 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY "${LIBRARY_DIR}"
   ARCHIVE_OUTPUT_DIRECTORY "${LIBRARY_DIR}") 
 target_link_libraries(${PROJECT_NAME} PUBLIC view) 
-target_compile_definitions(${PROJECT_NAME} PRIVATE -DDATA_PATH="${FRAMEWORK2D_DIR}/../Homeworks/2_image_warping/data")
+target_compile_definitions(${PROJECT_NAME} PRIVATE -DDATA_PATH="${FRAMEWORK2D_DIR}/../Homeworks/3_poisson_image_editing/data")
