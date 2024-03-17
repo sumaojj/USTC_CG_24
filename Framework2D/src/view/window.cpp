@@ -106,7 +106,7 @@ bool Window::init_gui()
     ImGui::CreateContext();
 
     ImGuiIO& io = ImGui::GetIO();
-    (void)io; 
+    (void)io;
     // - fontsize
     float xscale, yscale;
     glfwGetWindowContentScale(window_, &xscale, &yscale);
@@ -116,12 +116,12 @@ bool Window::init_gui()
 
     ImGui_ImplGlfw_InitForOpenGL(window_, true);
 #if defined(__APPLE__)
-    std::cout << "Using Apple: Supported OpenGL version = " << glGetString(GL_VERSION) << std::endl;
+    std::cout << "Using Apple: Supported OpenGL version = "
+              << glGetString(GL_VERSION) << std::endl;
     ImGui_ImplOpenGL3_Init("#version 100");
 #else
     ImGui_ImplOpenGL3_Init("#version 130");
 #endif
-    
 
     return true;
 }
