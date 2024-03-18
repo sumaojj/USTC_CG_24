@@ -30,6 +30,7 @@ class CompSourceImage : public ImageEditor
     std::shared_ptr<Image> get_data();
     // Get the position to locate the region in the target image
     ImVec2 get_position() const;
+    // get the selected region
 
    private:
     RegionType region_type_ = kRect;

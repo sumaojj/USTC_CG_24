@@ -1,9 +1,15 @@
 #include "comp_target_image.h"
 
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <Eigen/SparseCholesky>
+#include <Eigen/SparseLU>
 #include <cmath>
+#include <iostream>
 
 namespace USTC_CG
 {
+using namespace Eigen;
 using uchar = unsigned char;
 
 CompTargetImage::CompTargetImage(
@@ -127,10 +133,162 @@ void CompTargetImage::clone()
             // cloning. For each pixel in the selected region, calculate the
             // final RGB color by solving Poisson Equations.
             restore();
-
-            for (int i = 0; i < mask->width(); ++i)
+            // get the size of the selected region
+            int width = 0;
+            int height = 0;
+            for (int i = static_cast<int>(source_image_->get_position().y);
+                 i < mask->height();
+                 i++)
             {
-                for (int j = 0; j < mask->height(); ++j)
+                if (mask->get_pixel(
+                        static_cast<int>(source_image_->get_position().x),
+                        i)[0] > 0)
+                {
+                    height++;
+                }
+            }
+
+            for (int j = static_cast<int>(source_image_->get_position().x);
+                 j < mask->width();
+                 j++)
+            {
+                if (mask->get_pixel(
+                        j,
+                        static_cast<int>(source_image_->get_position().y))[0] >
+                    0)
+                {
+                    width++;
+                }
+            }
+
+            width = width - 2;
+            height = height - 2;
+            // std::cout << "width" << width << "height" << height << std::endl;
+
+            // get inside Laplacian value of the slected image
+            int x_0 = static_cast<int>(source_image_->get_position().x);
+            int y_0 = static_cast<int>(source_image_->get_position().y);
+            MatrixXd b(width * height, 3);
+            for (int k = 0; k < 3; k++)
+            {
+                for (int i = 0; i < width; i++)
+                {
+                    for (int j = 0; j < height; j++)
+                    {
+                        if (mask->get_pixel(x_0 + i + 1, y_0 + j + 1)[0] > 0)
+                        {
+                            b(i * height + j, k) =
+                                (4 * source_image_->get_data()->get_pixel(
+                                         x_0 + i + 1, y_0 + j + 1)[k] -
+                                 source_image_->get_data()->get_pixel(
+                                     x_0 + i, y_0 + j + 1)[k] -
+                                 source_image_->get_data()->get_pixel(
+                                     x_0 + i + 2, y_0 + j + 1)[k] -
+                                 source_image_->get_data()->get_pixel(
+                                     x_0 + i + 1, y_0 + j)[k] -
+                                 source_image_->get_data()->get_pixel(
+                                     x_0 + i + 1, y_0 + j + 2)[k]);
+                        }
+                    }
+                }
+            }
+            // std::cout << "b" << b << std::endl;
+
+            // if
+
+            // modify the Matrix b to match the boundary condition
+            for (int k = 0; k < 3; k++)
+            {
+                for (int i = 0; i < width; i++)
+                {
+                    for (int j = 0; j < height; j++)
+                    {
+                        if (i == 0)
+                        {
+                            b(i * height + j, k) +=
+                                data_->get_pixel(x_0 + i, y_0 + j + 1)[k];
+                        }
+                        if (i == width - 1)
+                        {
+                            b(i * height + j, k) +=
+                                data_->get_pixel(x_0 + i + 2, y_0 + j + 1)[k];
+                        }
+                        if (j == 0)
+                        {
+                            b(i * height + j, k) +=
+                                data_->get_pixel(x_0 + i + 1, y_0 + j)[k];
+                        }
+                        if (j == height - 1)
+                        {
+                            b(i * height + j, k) +=
+                                data_->get_pixel(x_0 + i + 1, y_0 + j + 2)[k];
+                        }
+                    }
+                }
+            }
+            // std::cout << "b" << b << std::endl;
+
+            // entry Matrix
+            SparseMatrix<double> A(width * height, width * height);
+            std::vector<Triplet<double>> triplets;
+            A.setZero();
+            for (int i = 0; i < width * height; i++)
+            {
+                triplets.push_back(Triplet<double>(i, i, 4));
+            }
+            for (int i = 0; i < width * height - 1; i++)
+            {
+                triplets.push_back(Triplet<double>(i, i + 1, -1));
+                triplets.push_back(Triplet<double>(i + 1, i, -1));
+            }
+            for (int i = 0; i < width * height - height; i++)
+            {
+                triplets.push_back(Triplet<double>(i, i + height, -1));
+                triplets.push_back(Triplet<double>(i + height, i, -1));
+            }
+            A.setFromTriplets(triplets.begin(), triplets.end());
+
+            // std::cout << "A" << A << std::endl;
+
+            // solve the sparse linear system
+            SparseLU<SparseMatrix<double>> solver;
+            solver.compute(A);
+            if (solver.info() != Success)
+            {
+                std::cout << "Error in solving the linear system" << std::endl;
+                return;
+            }
+            // MatrixXd x(width * height, 3);
+            // for (int i = 0; i < 3; i++)
+            // {
+            //     x.col(i) = solver.solve(b.col(i));
+            //     if (solver.info() != Success)
+            //     {
+            //         std::cout << "Error in solving the linear system2"
+            //                   << std::endl;
+            //         return;
+            //     }
+            // }
+            MatrixXd x = solver.solve(b);
+            // std::cout << "x" << x << std::endl;
+
+            // if entry>255, entry=255
+            for (int i = 0; i < width * height; i++)
+            {
+                for (int j = 0; j < 3; j++)
+                {
+                    if (x(i, j) > 255)
+                    {
+                        x(i, j) = 255;
+                    }
+                }
+            }
+
+            // modify the target image
+
+            for (int i = 0; i < width; i++)
+            {
+                for (int j = 0; j < height; j++)
                 {
                     int tar_x =
                         static_cast<int>(mouse_position_.x) + i -
@@ -139,12 +297,15 @@ void CompTargetImage::clone()
                         static_cast<int>(mouse_position_.y) + j -
                         static_cast<int>(source_image_->get_position().y);
                     if (0 <= tar_x && tar_x < image_width_ && 0 <= tar_y &&
-                        tar_y < image_height_ && mask->get_pixel(i, j)[0] > 0)
+                        tar_y < image_height_ &&
+                        mask->get_pixel(x_0 + i + 1, y_0 + j + 1)[0] > 0)
                     {
                         data_->set_pixel(
                             tar_x,
                             tar_y,
-                            source_image_->get_data()->get_pixel(i, j));
+                            { static_cast<uchar>(x(i * height + j, 0)),
+                              static_cast<uchar>(x(i * height + j, 1)),
+                              static_cast<uchar>(x(i * height + j, 2)) });
                     }
                 }
             }

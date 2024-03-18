@@ -93,6 +93,11 @@ void WindowPoisson::draw_toolbar()
             "clone the selected region to the target image.");
         // HW3_TODO: You may add more items in the menu for the different types
         // of Poisson editing.
+        ImGui::Separator();
+        if (ImGui::MenuItem("Seamless") && p_target_ && p_source_)
+        {
+            p_target_->set_seamless();
+        }
 
         ImGui::EndMainMenuBar();
     }
