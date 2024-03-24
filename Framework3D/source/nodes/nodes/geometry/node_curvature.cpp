@@ -33,7 +33,7 @@ static void node_curvature_exec(ExeParams params)
     // (TO BE UPDATED) Avoid processing the node when there is no input
     if (!input.get_component<MeshComponent>()) {
         // throw std::runtime_error("CurvatureNode: Input doesn't contain a mesh.");
-        return;
+        throw std::runtime_error("Curvature: Need Geometry Input.");
     }
 
     // This is the halfedge mesh we get
@@ -42,7 +42,7 @@ static void node_curvature_exec(ExeParams params)
     // One can use the function n_vertices(), n_faces(), n_halfedges() to get the numbers of items
     pxr::VtArray<float> rst(halfedge_mesh->n_vertices());
 
-    // For each vertex, we compute the Gauss curvature��
+    // For each vertex, we compute the Gauss curvature
     // First, we need to iterate through all the vertices:
     // - OpenMesh uses "handles" to represent each
     // - The following iteration visit all the "VertexHandles"
@@ -67,7 +67,7 @@ static void node_curvature_exec(ExeParams params)
         for (const auto& halfedge_handle : vertex_handle.outgoing_halfedges()) {
             // vertex_handle, v1, v2 forms a face near v
             const auto& v1 = halfedge_handle.to();
-            const auto& v2 = halfedge_handle.opp().next().to();
+            const auto& v2 = halfedge_handle.prev().opp().to();
             const auto& vec1 = halfedge_mesh->point(v1) - position;
             const auto& vec2 = halfedge_mesh->point(v2) - position;
             // The area formed by vec1 and vec2:
@@ -75,11 +75,11 @@ static void node_curvature_exec(ExeParams params)
             // The angle between vec1 and vec2:
             float cos = vec1.dot(vec2) / (vec1.norm() * vec2.norm());
             float theta = acosf(cos);
-            // Assemble the sumations
+            // Assemble the summations
             area_v += area / 3.0f;
             theta_sum += theta;
         }
-        // Finaly we come to the Gauss curvature of this vertex
+        // Finally we come to the Gauss curvature of this vertex
         float K = (2 * M_PI - theta_sum) / area_v;
         // Use vertex_handle.idx() to get the index of the vertex
         rst[vertex_handle.idx()] = K;

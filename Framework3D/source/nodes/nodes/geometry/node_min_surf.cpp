@@ -8,8 +8,6 @@
 /*
 ** @brief HW4_TutteParameterization
 **
-** <This is a simple template for assignment code skeleton>
-**
 ** This file presents the basic framework of a "node", which processes inputs
 ** received from the left and outputs specific variables for downstream nodes to
 ** use.
@@ -21,7 +19,7 @@
 ** eventually allows placing this node in the GUI interface.
 **
 ** Your task is to fill in the required logic at the specified locations
-** within this template, espacially in node_exec.
+** within this template, especially in node_exec.
 */
 
 namespace USTC_CG::node_min_surf {
@@ -29,6 +27,20 @@ static void node_min_surf_declare(NodeDeclarationBuilder& b)
 {
     // Input-1: Original 3D mesh with boundary
     b.add_input<decl::Geometry>("Input");
+
+    /*
+    ** NOTE: You can add more inputs or outputs if necessary. For example, in some cases,
+    ** additional information (e.g. other mesh geometry, other parameters) is required to perform
+    ** the computation.
+    **
+    ** Be sure that the input/outputs do not share the same name. You can add one geometry as
+    **
+    **                b.add_input<decl::Geometry>("Input");
+    **
+    ** Or maybe you need a value buffer like:
+    **
+    **                b.add_input<decl::Float1Buffer>("Weights");
+    */
 
     // Output-1: Minimal surface with fixed boundary
     b.add_output<decl::Geometry>("Output");
@@ -41,8 +53,9 @@ static void node_min_surf_exec(ExeParams params)
 
     // (TO BE UPDATED) Avoid processing the node when there is no input
     if (!input.get_component<MeshComponent>()) {
-        return;
+        throw std::runtime_error("Minimal Surface: Need Geometry Input.");
     }
+    throw std::runtime_error("Not implemented");
 
     /* ----------------------------- Preprocess -------------------------------
     ** Create a halfedge structure (using OpenMesh) for the input mesh. The
@@ -88,14 +101,14 @@ static void node_min_surf_exec(ExeParams params)
     ** minimal surface mesh given fixed boundary conditions using the Laplace
     ** equation. The specific implementation details may vary based on the mesh
     ** representation and numerical methods used.
+    **
     */
 
     /* ----------------------------- Postprocess ------------------------------
     ** Convert the minimal surface mesh from the halfedge structure back to
     ** GOperandBase format as the node's output.
     */
-    auto operand_base =
-        openmesh_to_operand(halfedge_mesh.get());
+    auto operand_base = openmesh_to_operand(halfedge_mesh.get());
 
     // Set the output of the nodes
     params.set_output("Output", std::move(*operand_base));
