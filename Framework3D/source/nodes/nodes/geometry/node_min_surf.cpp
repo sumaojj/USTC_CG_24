@@ -28,6 +28,7 @@
 */
 
 namespace USTC_CG::node_min_surf {
+using namespace Eigen;
 static void node_min_surf_declare(NodeDeclarationBuilder& b)
 {
     // Input-1: Original 3D mesh with boundary
@@ -69,7 +70,43 @@ static void node_min_surf_exec(ExeParams params)
     ** mesh elements.
     */
     auto halfedge_mesh = operand_to_openmesh(&input);
+    // get number of vertices
+    int num_vertices = halfedge_mesh->n_vertices();
 
+    MatrixXd b(num_vertices, 3){ MatrixXf::Zero(num_vertices, 3) };
+    SparseMatrix<double> A(num_vertices, num_vertices);
+    std::vector<Triplet<double>> triplets;
+    A.setZero();
+
+    for (auto v : halfedge_mesh->halfedges()) {
+        if (he.is_boundary(v)) {
+            b.row(v.idx()) = v->point();
+        }
+        else {
+            double w = 0;
+            for (auto vv : halfedge_mesh->vv_range(v)) {
+                w += 1;
+                triplets.push_back(Triplet<double>(v.idx(), vv.idx(), -1));
+            }
+            triplets.push_back(Triplet<double>(v.idx(), v.idx(), w));
+        }
+    }
+
+    A.setFromTriplets(triplets.begin(), triplets.end());
+
+    // Solve the linear system
+    SparseLU<SparseMatrix<double>> solver;
+    solver.compute(A);
+    if (solver.info() != Success) {
+        throw std::runtime_error("Minimal Surface: Failed to solve the linear system.");
+    }
+
+    MatrixXd x = solver.solve(b);
+
+    // Update the vertex positions
+    for (auto v : halfedge_mesh->vertices()) {
+        v->point() = x.row(v.idx());
+    }
     /* ---------------- [HW4_TODO] TASK 1: Minimal Surface --------------------
     ** In this task, you are required to generate a 'minimal surface' mesh with
     ** the boundary of the input mesh as its boundary.
