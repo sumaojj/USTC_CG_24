@@ -1,3 +1,8 @@
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <Eigen/SparseCholesky>
+#include <Eigen/SparseLU>
+
 #include "GCore/Components/MeshOperand.h"
 #include "Nodes/node.hpp"
 #include "Nodes/node_declare.hpp"
